@@ -6,11 +6,6 @@ export class DataProcessor {
         this.#url = weatherConfig.url;
         this.#city = weatherConfig.cities;
     }
-    // async getData(latitude, longitude) {
-    //     const responseFromServer =
-    //         await fetch(`${this.#url}&latitude=${latitude}&longitude=${longitude}`);
-    //     return responseFromServer.json();
-    // }
     async getTemperatureData(city, startDate, endDate, hourFrom, hourTo) {
         //TODO
         const responseFromServer =
