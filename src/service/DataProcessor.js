@@ -1,37 +1,42 @@
-import { weatherConfig } from "../config/weather-config.js";
 export class DataProcessor {
-    #url
-    #city
-    constructor(url, city) {
-        this.#url = weatherConfig.url;
-        this.#city = weatherConfig.cities;
+    #url;
+    #cities;
+    constructor(url, cities) {
+        this.#url = url;
+        this.#cities = cities;
     }
-    // async getData(latitude, longitude) {
-    //     const responseFromServer =
-    //         await fetch(`${this.#url}&latitude=${latitude}&longitude=${longitude}`);
-    //     return responseFromServer.json();
-    // }
-    async getTemperatureData(city, startDate, endDate, hourFrom, hourTo) {
-        //TODO
+    async #getData(actualUrl) {
         const responseFromServer =
-            await fetch(`${this.#url}&latitude=${getCityCoordinates(city).latitude}&longitude=${getCityCoordinates(city).longitude}
-            &start_date=${startDate}&end_date=${endDate}`).join('');
-        return getDateHourTemperatureObjectArray(await responseFromServer.join(''));
+            await fetch(actualUrl);
+        return responseFromServer.json();
+    }
+    async getTemperatureData(city, startDate, endDate, hourFrom, hourTo) {
+        const latLong = this.#cities[city];
+        const actualUrl = this.#getActualUrl(latLong.latitude, latLong.longitude,
+            startDate, endDate);
+        const rawData = await this.#getData(actualUrl);
+        return processRawData(rawData, hourFrom, hourTo);
+    }
+    #getActualUrl(latitude, longitude, startDate, endDate) {
+        return `${this.#url}&latitude=${latitude}&longitude=${longitude}&start_date=${startDate}&end_date=${endDate}`
     }
 }
-function getCityCoordinates(city, weatherConfig) {
-    const cityCoordinates = weatherConfig.cities[cityName];
-    return cityCoordinates ? { latitude: city.latitude, longitude: city.longitude } : {};
+
+function processRawData(rawData, hourFrom, hourTo) {
+    const timeArray = getHoursElements(rawData.hourly.time, hourFrom, hourTo);
+    const temperatureArray = getHoursElements(rawData.hourly.temperature_2m, hourFrom, hourTo);;
+    return timeArray.map((t, index) => {
+        const res = {};
+        const dateTime = t.split("T");
+        res.date = dateTime[0];
+        res.hour = dateTime[1];
+        res.temperature = temperatureArray[index];
+        return res;
+    })
 }
-function getDateHourTemperatureObjectArray(dataResponseFromServer) {
-    const time = dataResponseFromServer.hourly.time;
-    const temperature = dataResponseFromServer.hourly.temperature_2m;
-    let result = [];
-    time.forEach((time, index) => {
-        let dateObject = time.split("T")[0];
-        let hourObject = parseInt(time.split("T")[1].split(":")[0]);
-        let tempObject = temperature[index];
-        result.push({ date: dateObject, hour: hourObject, temperature: tempObject });
-    });
-    return result;
+function getHoursElements(array, hourFrom, hourTo) {
+    return array.filter((__, index) => {
+        const hour = index % 24;
+        return hour >= hourFrom && hour <= hourTo
+    })
 }
